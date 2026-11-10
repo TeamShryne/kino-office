@@ -1,0 +1,77 @@
+name: Build and publish Kino Office runtime library
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Library version
+        required: true
+        default: v0.1.0
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build AAR
+        run: gradle --build-cache :office:assembleRelease
+      - name: Locate Android D8
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          D8_PATH="$(find "$SDK/build-tools" -maxdepth 2 -type f -name d8 -print 2>/dev/null | sort -V | tail -n 1)"
+          if [[ -z "$D8_PATH" ]]; then
+            SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+            if [[ ! -x "$SDKMANAGER" ]]; then SDKMANAGER="$(command -v sdkmanager)"; fi
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" "build-tools;35.0.0"
+            D8_PATH="$SDK/build-tools/35.0.0/d8"
+          fi
+          test -x "$D8_PATH"
+          echo "D8_PATH=$D8_PATH" >> "$GITHUB_ENV"
+      - name: Package runtime DEX
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          AAR="$(find office/build/outputs/aar -name '*.aar' | head -n 1)"
+          test -n "$AAR"
+          rm -rf work && mkdir -p work/dex
+          cd work
+          unzip -o "../$AAR" classes.jar >/dev/null
+          "$D8_PATH" --min-api 26 --output dex classes.jar
+          test -f dex/classes.dex
+          cd dex
+          zip -q ../classes.jar classes*.dex
+          cd ..
+          mkdir -p dist
+          zip -q "dist/kino-office-universal.zip" classes.jar
+          printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > library.json
+          cd dist
+          # include library.json inside the archive
+          cd ..
+          zip -q -j "dist/kino-office-universal.zip" library.json
+          cd dist
+          sha256sum kino-office-universal.zip
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          RELEASE_TAG="runtime-${VERSION}"
+          gh release create "$RELEASE_TAG" work/dist/* --repo "$GITHUB_REPOSITORY" --title "Kino Office runtime ${VERSION}" --generate-notes
