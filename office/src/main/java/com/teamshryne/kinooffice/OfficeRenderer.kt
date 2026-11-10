@@ -30,7 +30,7 @@ class OfficeRenderer(
 ) {
     private val directory = File(context.filesDir, "office-exports").apply { mkdirs() }
 
-    suspend fun render(arguments: JSONObject): String {
+    fun render(arguments: org.json.JSONObject): String {
         val format = arguments.getString("format")
         val operation = arguments.optString("operation", "create")
         val title = arguments.optString("title", "Kino document")
@@ -44,7 +44,7 @@ class OfficeRenderer(
         }
     }
 
-    suspend fun create(format: String, title: String, payload: JSONObject, outputFilename: String? = null): String {
+    fun create(format: String, title: String, payload: JSONObject, outputFilename: String? = null): String {
         val safeTitle = title.take(120).ifBlank { "Kino document" }
         val name = safeOutputName(outputFilename, format) ?: "kino-${UUID.randomUUID()}.$format"
         val output = File(directory, name)
@@ -64,7 +64,7 @@ class OfficeRenderer(
         }
     }
 
-    suspend fun edit(format: String, filename: String, operations: JSONArray, outputFilename: String? = null): String {
+    fun edit(format: String, filename: String, operations: JSONArray, outputFilename: String? = null): String {
         require(filename.matches(Regex("kino-[a-f0-9-]{36}\\.(docx|xlsx|pptx|xls)"))) { "Invalid office filename." }
         val source = File(directory, filename)
         require(source.isFile) { "Office file not found." }
