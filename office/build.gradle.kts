@@ -23,7 +23,12 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.3.0")
 }
 
-tasks.register<Copy>("copyRuntimeLibs") {
-    from(configurations.releaseRuntimeClasspath)
-    into(layout.buildDirectory.dir("runtime-libs"))
+tasks.register("copyRuntimeLibs") {
+    doLast {
+        val config = configurations.getByName("releaseRuntimeClasspath")
+        copy {
+            from(config)
+            into(layout.buildDirectory.dir("runtime-libs").get())
+        }
+    }
 }
