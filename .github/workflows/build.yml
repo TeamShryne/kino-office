@@ -48,25 +48,30 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          gradle --build-cache :office:copyRuntimeLibs
           AAR="$(find office/build/outputs/aar -name '*.aar' | head -n 1)"
           test -n "$AAR"
           rm -rf work && mkdir -p work/dex
           cd work
           unzip -o "../$AAR" classes.jar >/dev/null
-          "$D8_PATH" --min-api 26 --output dex classes.jar
+          # D8 all runtime dependency jars together with the library classes.
+          D8_INPUTS="classes.jar"
+          for jar in ../office/build/runtime-libs/*.jar; do
+            D8_INPUTS="$D8_INPUTS $jar"
+          done
+          # shellcheck disable=SC2086
+          "$D8_PATH" --min-api 26 --output dex $D8_INPUTS
           test -f dex/classes.dex
           cd dex
           zip -q ../classes.jar classes*.dex
           cd ..
           mkdir -p dist
-          zip -q "dist/kino-office-universal.zip" classes.jar
           printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > library.json
-          cd dist
-          # include library.json inside the archive
-          cd ..
-          zip -q -j "dist/kino-office-universal.zip" library.json
+          zip -q -j "dist/kino-office-universal.zip" classes.jar library.json
           cd dist
           sha256sum kino-office-universal.zip
+          cd ../..
+
       - name: Publish release
         shell: bash
         env:

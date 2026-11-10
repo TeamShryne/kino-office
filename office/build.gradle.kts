@@ -22,3 +22,8 @@ android {
 dependencies {
     implementation("org.apache.poi:poi-ooxml:5.3.0")
 }
+
+tasks.register<Copy>("copyRuntimeLibs") {
+    from(configurations.releaseRuntimeClasspath)
+    into(layout.buildDirectory.dir("runtime-libs"))
+}
