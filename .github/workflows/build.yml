@@ -65,7 +65,7 @@ jobs:
           "$D8_PATH" --min-api 26 --output dex $D8_INPUTS
           test -f dex/classes.dex
           # Merge DEX files and runtime resources (POI needs schema/template resources).
-          python3 scripts/package_resources.py work/dex work/classes.jar office/build/runtime-libs/*.jar "$AAR"
+          python3 ../scripts/package_resources.py work/dex work/classes.jar office/build/runtime-libs/*.jar "$AAR"
           # package_resources.py writes work/classes.jar; append library.json.
           printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > work/library.json
           cd work
