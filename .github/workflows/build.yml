@@ -74,6 +74,17 @@ jobs:
           sha256sum kino-office-universal.zip
           cd ../..
 
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kino-office-build
+          path: |
+            office/build/reports/tests
+            work/dist
+            work/classes.jar
+          if-no-files-found: ignore
+
       - name: Publish release
         shell: bash
         env:
