@@ -374,29 +374,27 @@ class OfficeRenderer(
     private fun createPptx(output: File, title: String, payload: JSONObject) {
         val ppt = XMLSlideShow()
         val slides = payload.optJSONArray("slides")
+        val master = ppt.slideMasters.firstOrNull()
+        val layout = master?.getLayout(org.apache.poi.xslf.usermodel.SlideLayout.TITLE_AND_CONTENT)
+            ?: master?.getLayout(org.apache.poi.xslf.usermodel.SlideLayout.TITLE_ONLY)
         if (slides == null || slides.length() == 0) {
-            val s = ppt.createSlide()
-            val t = s.createTextBox()
-            t.setText(title)
+            val slide = if (layout != null) ppt.createSlide(layout) else ppt.createSlide()
+            val titleShape = slide.getPlaceholder(0) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+            titleShape?.let { it.clearText(); it.setText(title) }
         } else {
             require(slides.length() <= limits.maxSlides) { "Too many slides." }
             for (si in 0 until slides.length()) {
                 val s = slides.optJSONObject(si) ?: continue
-                val slide = ppt.createSlide()
+                val slide = if (layout != null) ppt.createSlide(layout) else ppt.createSlide()
                 val titleText = s.optString("title").ifBlank { if (si == 0) title else "Slide ${si + 1}" }
-                // Title
-                val titleShape = slide.createTextBox()
-                val tp = titleShape.addNewTextParagraph()
-                val tr = tp.addNewTextRun()
-                tr.setText(titleText)
-                tr.fontSize = 28.0
-                tr.isBold = true
-                // Bullets
+                val titleShape = slide.getPlaceholder(0) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                titleShape?.let { it.clearText(); it.setText(titleText) }
                 val bullets = s.optJSONArray("bullets")
                 if (bullets != null && bullets.length() > 0) {
-                    val body = slide.createTextBox()
+                    val body = slide.getPlaceholder(1) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                    body?.clearText()
                     for (bi in 0 until bullets.length()) {
-                        val bp = body.addNewTextParagraph()
+                        val bp = body?.addNewTextParagraph() ?: continue
                         bp.bulletCharacter = "•"
                         val br = bp.addNewTextRun()
                         br.setText(bullets.optString(bi))
@@ -405,11 +403,9 @@ class OfficeRenderer(
                 }
                 val notes = s.optString("notes")
                 if (notes.isNotBlank()) {
-                    val ns = slide.notes
-                    ns?.let {
-                        val np = it.createTextBox()?.addNewTextParagraph()
-                        np?.addNewTextRun()?.setText(notes)
-                    }
+                    val notesSlide = slide.notes
+                    val notesShape = notesSlide?.getPlaceholder(0) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                    notesShape?.setText(notes)
                 }
             }
         }
@@ -419,25 +415,25 @@ class OfficeRenderer(
 
     private fun editPptx(source: File, output: File, operations: JSONArray) {
         val ppt = XMLSlideShow(FileInputStream(source))
+        val master = ppt.slideMasters.firstOrNull()
+        val layout = master?.getLayout(org.apache.poi.xslf.usermodel.SlideLayout.TITLE_AND_CONTENT)
+            ?: master?.getLayout(org.apache.poi.xslf.usermodel.SlideLayout.TITLE_ONLY)
         for (i in 0 until operations.length()) {
             val op = operations.optJSONObject(i) ?: continue
             when (op.optString("type")) {
                 "add_slide" -> {
-                    val slide = ppt.createSlide()
+                    val slide = if (layout != null) ppt.createSlide(layout) else ppt.createSlide()
                     val title = op.optString("title")
                     if (title.isNotBlank()) {
-                        val ts = slide.createTextBox()
-                        val tp = ts.addNewTextParagraph()
-                        val tr = tp.addNewTextRun()
-                        tr.setText(title)
-                        tr.fontSize = 28.0
-                        tr.isBold = true
+                        val ts = slide.getPlaceholder(0) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                        ts?.let { it.clearText(); it.setText(title) }
                     }
                     val bullets = op.optJSONArray("bullets")
                     if (bullets != null && bullets.length() > 0) {
-                        val body = slide.createTextBox()
+                        val body = slide.getPlaceholder(1) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                        body?.clearText()
                         for (bi in 0 until bullets.length()) {
-                            val bp = body.addNewTextParagraph()
+                            val bp = body?.addNewTextParagraph() ?: continue
                             bp.bulletCharacter = "•"
                             bp.addNewTextRun().setText(bullets.optString(bi))
                         }
@@ -447,18 +443,17 @@ class OfficeRenderer(
                     val index = op.optInt("slide", ppt.slides.size - 1)
                     if (index < 0 || index >= ppt.slides.size) continue
                     val slide = ppt.slides[index]
-                    val body = slide.createTextBox()
-                    val bp = body.addNewTextParagraph()
+                    val body = slide.getPlaceholder(1) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                    val bp = body?.addNewTextParagraph() ?: continue
                     bp.bulletCharacter = "•"
                     bp.addNewTextRun().setText(op.optString("text"))
                 }
                 "set_title" -> {
                     val index = op.optInt("slide", 0)
                     if (index < 0 || index >= ppt.slides.size) continue
-                    // best-effort: update first text box
                     val slide = ppt.slides[index]
-                    val first = slide.shapes.filterIsInstance<org.apache.poi.xslf.usermodel.XSLFTextBox>().firstOrNull()
-                    first?.textParagraphs?.firstOrNull()?.textRuns?.firstOrNull()?.setText(op.optString("title"))
+                    val first = slide.getPlaceholder(0) as? org.apache.poi.xslf.usermodel.XSLFTextShape
+                    first?.let { it.clearText(); it.setText(op.optString("title")) }
                 }
                 "delete_slide" -> {
                     val index = op.optInt("slide", -1)
