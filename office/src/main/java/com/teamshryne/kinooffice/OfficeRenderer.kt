@@ -545,8 +545,7 @@ class OfficeRenderer(
 
 object OfficeLibrary {
     @JvmStatic
-    fun render(context: android.content.Context, arguments: org.json.JSONObject): String {
-        val directory = java.io.File(context.filesDir, "office-exports")
+    fun render(directory: java.io.File, arguments: org.json.JSONObject): String {
         return OfficeRenderer(directory, OfficeLimits()).render(arguments)
     }
 }

@@ -66,4 +66,16 @@ class OfficeRendererTest {
             assertTrue(ppt.slides.isNotEmpty())
         }
     }
+    @Test
+    fun rendersThroughOfficeLibrary() {
+        val dir = File(System.getProperty("java.io.tmpdir"), "office-test-library").apply { mkdirs() }
+        val args = org.json.JSONObject()
+            .put("format", "docx")
+            .put("operation", "create")
+            .put("title", "Library Render")
+            .put("markdown", "# Library Render\n\nShared through reflection.")
+        val filename = OfficeLibrary.render(dir, args)
+        val file = File(dir, filename)
+        assertTrue(file.exists() && file.length() > 0)
+    }
 }
