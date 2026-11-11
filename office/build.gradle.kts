@@ -22,6 +22,7 @@ android {
 dependencies {
     implementation("org.apache.poi:poi-ooxml:5.3.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
 }
 
 tasks.register("copyRuntimeLibs") {
