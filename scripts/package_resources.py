@@ -34,5 +34,3 @@ with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as out:
                     continue
                 seen.add(name)
                 out.writestr(info, source.read(info))
-EOF
-mkdir -p /tmp/opencode/kino-office/scripts && mv /tmp/opencode/kino-office/scripts/package_resources.py /tmp/opencode/kino-office/scripts/package_resources.py 2>/dev/null; echo ok
