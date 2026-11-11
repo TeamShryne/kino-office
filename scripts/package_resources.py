@@ -19,7 +19,12 @@ with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as out:
     for jar in jars:
         if not os.path.isfile(jar):
             continue
-        with zipfile.ZipFile(jar) as source:
+        try:
+            source = zipfile.ZipFile(jar)
+        except zipfile.BadZipFile:
+            print("Skipping non-zip:", jar, file=sys.stderr)
+            continue
+        with source:
             for info in source.infolist():
                 if info.is_dir():
                     continue
