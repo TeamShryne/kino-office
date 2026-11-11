@@ -64,11 +64,12 @@ jobs:
           # shellcheck disable=SC2086
           "$D8_PATH" --min-api 26 --output dex $D8_INPUTS
           test -f dex/classes.dex
-          cd dex
-          zip -q ../classes.jar classes*.dex
-          cd ..
+          # Merge DEX files and runtime resources (POI needs schema/template resources).
+          python3 scripts/package_resources.py work/dex work/classes.jar office/build/runtime-libs/*.jar "$AAR"
+          # package_resources.py writes work/classes.jar; append library.json.
+          printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > work/library.json
+          cd work
           mkdir -p dist
-          printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > library.json
           zip -q -j "dist/kino-office-universal.zip" classes.jar library.json
           cd dist
           sha256sum kino-office-universal.zip
