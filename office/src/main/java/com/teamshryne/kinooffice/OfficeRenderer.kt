@@ -25,10 +25,10 @@ data class OfficeLimits(
 )
 
 class OfficeRenderer(
-    private val context: Context,
+    private val directory: File,
     private val limits: OfficeLimits = OfficeLimits(),
 ) {
-    private val directory = File(context.filesDir, "office-exports").apply { mkdirs() }
+    init { directory.mkdirs() }
 
     fun render(arguments: org.json.JSONObject): String {
         val format = arguments.getString("format")
@@ -546,6 +546,7 @@ class OfficeRenderer(
 object OfficeLibrary {
     @JvmStatic
     fun render(context: android.content.Context, arguments: org.json.JSONObject): String {
-        return OfficeRenderer(context, OfficeLimits()).render(arguments)
+        val directory = java.io.File(context.filesDir, "office-exports")
+        return OfficeRenderer(directory, OfficeLimits()).render(arguments)
     }
 }

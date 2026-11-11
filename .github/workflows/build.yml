@@ -26,6 +26,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Run tests
+        run: gradle --build-cache :office:test
       - name: Build AAR
         run: gradle --build-cache :office:assembleRelease
       - name: Locate Android D8
