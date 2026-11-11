@@ -53,9 +53,10 @@ jobs:
           gradle --build-cache :office:copyRuntimeLibs
           AAR="$(find office/build/outputs/aar -name '*.aar' | head -n 1)"
           test -n "$AAR"
-          rm -rf work && mkdir -p work/dex
+          rm -rf work && mkdir -p work
           cd work
           unzip -o "../$AAR" classes.jar >/dev/null
+          mkdir -p dex
           # D8 all runtime dependency jars together with the library classes.
           D8_INPUTS="classes.jar"
           for jar in ../office/build/runtime-libs/*.jar; do
@@ -65,10 +66,9 @@ jobs:
           "$D8_PATH" --min-api 26 --output dex $D8_INPUTS
           test -f dex/classes.dex
           # Merge DEX files and runtime resources (POI needs schema/template resources).
-          python3 ../scripts/package_resources.py work/dex work/classes.jar office/build/runtime-libs/*.jar "$AAR"
-          # package_resources.py writes work/classes.jar; append library.json.
-          printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > work/library.json
-          cd work
+          python3 ../scripts/package_resources.py dex classes.jar ../office/build/runtime-libs/*.jar "../$AAR"
+          # package_resources.py writes classes.jar; append library.json.
+          printf '{"id":"kino-office","version":"%s","abi":"universal"}\n' "$VERSION" > library.json
           mkdir -p dist
           zip -q -j "dist/kino-office-universal.zip" classes.jar library.json
           cd dist
